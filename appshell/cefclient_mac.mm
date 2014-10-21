@@ -235,11 +235,27 @@ extern NSMutableArray* pendingOpenFiles;
 
 -(void)windowDidResize:(NSNotification *)notification
 {
+  NSWindow* window = [notification object];
+
+  NSLog(@"windowDidResize");
+
+  NSInteger screenIndex = 0;
+
+  for(NSScreen* screen in [NSScreen screens]) {
+    if(window.screen == screen) {
+      break;
+    }
+
+    screenIndex++;
+  }
+
+  NSLog(@"screen index: %d", screenIndex);
+
+  [[NSUserDefaults standardUserDefaults]
+   setInteger:screenIndex forKey:@"NSDefaultScreen"];
 
 // BOBNOTE: this should be moved into the CustomTitlebarView class
 #ifdef DARK_UI
-    NSWindow* window = [notification object];
-
     if ([self isFullScreenSupported]) {
         
         NSView* themeView = [[window contentView] superview];
@@ -297,7 +313,9 @@ extern NSMutableArray* pendingOpenFiles;
     NSView* themeView = [contentView superview];
     NSRect  parentFrame = [themeView frame];
     NSButton *windowButton = nil;
-    
+
+//    [mainWindow setFrameAutosaveName:[mainWindow representedFilename]];
+
 #ifdef CUSTOM_TRAFFIC_LIGHTS
     if (!trafficLightsView) {
         windowButton = [mainWindow standardWindowButton:NSWindowCloseButton];
@@ -538,8 +556,16 @@ extern NSMutableArray* pendingOpenFiles;
                           NSResizableWindowMask |
                           NSTexturedBackgroundWindowMask );
 
+  NSInteger screenIndex = [[NSUserDefaults standardUserDefaults]
+                           integerForKey:@"NSDefaultScreen"];
+  NSArray* screens = [NSScreen screens];
+  NSScreen* screen = screenIndex < (NSInteger)[screens count] ?
+    [screens objectAtIndex:screenIndex] : [NSScreen mainScreen];
+  NSLog(@"screen index: %d", screenIndex);
+//  screen = [NSScreen mainScreen];
+//  NSScreen* screen = [NSScreen mainScreen];
   // Get the available screen space
-  NSRect screen_rect = [[NSScreen mainScreen] visibleFrame];
+  NSRect screen_rect = [screen visibleFrame];
   // Start out with the content being as big as possible
   NSRect content_rect = [NSWindow contentRectForFrameRect:screen_rect styleMask:styleMask];
   
@@ -557,10 +583,11 @@ extern NSMutableArray* pendingOpenFiles;
 
   // Initialize the window with the adjusted default size
   NSWindow* mainWnd = [[UnderlayOpenGLHostingWindow alloc]
-                       initWithContentRect:content_rect
+                       initWithContentRect:screen_rect
                        styleMask:styleMask
                        backing:NSBackingStoreBuffered
-                       defer:NO];
+                       defer:NO
+                       screen:screen];
 
 #ifdef DARK_UI
   NSColorSpace *sRGB = [NSColorSpace sRGBColorSpace];
@@ -572,13 +599,13 @@ extern NSMutableArray* pendingOpenFiles;
     
   // "Preclude the window controller from changing a window’s position from the
   // one saved in the defaults system" (NSWindow Class Reference)
-  [[mainWnd windowController] setShouldCascadeWindows: NO];
+//  [[mainWnd windowController] setShouldCascadeWindows: NO];
   
   // Set the "autosave" name for the window. If there is a previously stored
   // size for the window, it will be loaded here and used to resize the window.
   // It appears that if the stored size is too big for the screen,
   // it is automatically adjusted to fit.
-  [mainWnd setFrameAutosaveName:APP_NAME @"MainWindow"];
+//  [mainWnd setFrameAutosaveName:APP_NAME @"MainWindow"];
   
   // Get the actual content size of the window since setFrameAutosaveName could
   // result in the window size changing.
